@@ -1,0 +1,97 @@
+import urllib.request
+import xlsxwriter
+
+from bs4 import BeautifulSoup
+
+BASE_URL = "https://bcorporation.com.au"
+
+class Company:
+    def __init__(self):
+        self.name = None
+        self.intro = None
+        self.certified = None
+        self.location = None
+        self.sector = None
+        self.site = None
+        self.detail = None
+        
+    def __repr__(self):
+        string = ""
+        string += self.name + '\n'
+        string += self.intro  + '\n'
+        string += self.certified  + '\n'
+        string += self.location  + '\n'
+        string += self.sector  + '\n'
+        string += self.site  + '\n'
+        string += self.detail
+        return string
+
+def main():
+    page = urllib.request.urlopen(BASE_URL + '/directory').read()
+
+    soup = BeautifulSoup(page, 'lxml')
+
+
+    company_list = list()
+    for item in soup.find_all('article'):
+        sub_url = BASE_URL + item.get('about')
+        sub_page = urllib.request.urlopen(sub_url).read()
+        sub_soup = BeautifulSoup(sub_page, 'lxml')
+        company = Company()
+        company.name = sub_soup.find('h1','serif heading3 mt-0').get_text()
+        data_list = sub_soup.find_all('div', "field-item even")
+        company.intro = data_list[0].get_text()
+        company.certified = data_list[1].get_text().split(": ", 1)[1]
+        company.location = data_list[2].get_text().split(": ", 1)[1]
+        company.sector = data_list[3].get_text().split(": ", 1)[1]
+        company.site = data_list[4].get_text()
+        company.detail = data_list[5].get_text()
+        company_list.append(company)
+    
+    for pagenum in range(1, 169):
+        DIRURL = BASE_URL + '/directory?page=' + str(pagenum)
+        page = urllib.request.urlopen(DIRURL).read()
+        soup = BeautifulSoup(page, 'lxml')
+        for item in soup.find_all('article'):
+            sub_url = BASE_URL + item.get('about')
+            sub_page = urllib.request.urlopen(sub_url).read()
+            sub_soup = BeautifulSoup(sub_page, 'lxml')
+            company = Company()
+            company.name = sub_soup.find('h1','serif heading3 mt-0').get_text()
+            data_list = sub_soup.find_all('div', "field-item even")
+            company.intro = data_list[0].get_text()
+            company.certified = data_list[1].get_text().split(": ", 1)[1]
+            company.location = data_list[2].get_text().split(": ", 1)[1]
+            company.sector = data_list[3].get_text().split(": ", 1)[1]
+            company.site = data_list[4].get_text()
+            company.detail = data_list[5].get_text()
+            company_list.append(company)
+
+    print(len(company_list), ' companies visited!')
+
+    # Create a workbook and add a worksheet.
+    workbook = xlsxwriter.Workbook('Company_data.xlsx')
+    worksheet = workbook.add_worksheet()
+
+    # Start from the first cell. Rows and columns are zero indexed.
+    row = 1
+
+    # Iterate over the data and write it out row by row.
+    for company in company_list:
+        col = 0
+        worksheet.write(row, col,     company.name)
+        worksheet.write(row, col + 1, company.intro)
+        worksheet.write(row, col + 2, company.certified)
+        worksheet.write(row, col + 3, company.location)
+        worksheet.write(row, col + 4, company.sector)
+        worksheet.write(row, col + 5, company.site)
+        worksheet.write(row, col + 6, company.detail)
+        row += 1
+
+    workbook.close()
+    return 0
+
+
+if __name__ == "__main__":
+    main()
+
